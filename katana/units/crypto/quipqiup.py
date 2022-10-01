@@ -1,15 +1,15 @@
 """
 Substituion cipher solver, by outsourcing to https://quipqiup.com/.
 
-The gist of this code is ripped from 
+The gist of this code is ripped from
 https://github.com/rallip/substituteBreaker. The unit takes the target, and
 if it does not look English text but it is clearly printable characters, it
-offers it to quipqiup online. 
+offers it to quipqiup online.
 
-This unit inherits from the 
+This unit inherits from the
 :class:`katana.unit.NotEnglishAndPrintableUnit` class, as we can expect
 the data to still be printable characters (letters, numbers and punctuation)
-but not readable English. It also inherits from the 
+but not readable English. It also inherits from the
 :class:`katana.units.crypto.CryptoUnit` class to ensure it is not a viable
 URL or potentially useful file.
 
@@ -17,7 +17,7 @@ URL or potentially useful file.
 
     This unit **does not recurse**. It simply looks for flags in the output of
     quipqiup's best potential solution. Note that Katana might find flags
-    that are not in the specific flag format, but also denoted in a 
+    that are not in the specific flag format, but also denoted in a
     "the flag is:" structure.
 
 """
@@ -27,25 +27,36 @@ import json  # json is used for communicating with quipqiup.com
 import requests
 import io
 from typing import Any
+from time import sleep
 
 from katana.unit import NotEnglishAndPrintableUnit, NotApplicable
 from katana.units.crypto import CryptoUnit
 
 
-def decodeSubstitute(cipher: str, time=3, spaces=True) -> str:
+def decodeSubstitute(cipher: str, time=3) -> str:
     """
-    This is stolen from https://github.com/rallip/substituteBreaker
+    This is based on https://github.com/rallip/substituteBreaker
     All it does is use the ``requests`` module to send the ciphertext to
     quipqiup and returns the results as a string.
     """
-    url = "https://6n9n93nlr5.execute-api.us-east-1.amazonaws.com/prod/solve"
-    clues = ""
-    data = {"ciphertext": cipher, "clues": clues, "solve-spaces": spaces, "time": time}
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
     }
 
-    return requests.post(url, data=json.dumps(data), headers=headers).text
+    clues = ""
+    url = "https://quipqiup.com/solve"
+    data = {"ciphertext": cipher, "clues": clues,
+            "mode": "auto", "was_auto": True, "was_clue": False}
+
+    response = json.loads(requests.post(url, data=json.dumps(
+        data), headers=headers, verify=False).text)
+
+    sleep(min(response["max_time"], time))
+
+    url = "https://quipqiup.com/status"
+    data = {"id": response["id"]}
+
+    return requests.post(url, data=json.dumps(data), headers=headers, verify=False).text
 
 
 class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
@@ -80,12 +91,12 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
         try:
             self.raw_target = self.target.stream.read().decode("utf-8")
         except UnicodeDecodeError:
-            raise units.NotApplicable("unicode error, unlikely usable cryptogram")
+            raise units.NotApplicable(
+                "unicode error, unlikely usable cryptogram")
 
         try:
             requests.get(
-                "https://6n9n93nlr5.execute-api.us-east-1.amazonaws.com/prod/solve"
-            )
+                "https://quipqiup.com/", verify=False)
         except requests.exceptions.ConnectionError:
             raise NotApplicable("cannot reach quipqiup solver")
 
