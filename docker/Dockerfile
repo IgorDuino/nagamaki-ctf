@@ -39,7 +39,7 @@ RUN make
 RUN cp /usr/snow-20130616/snow /usr/local/bin/snow && chmod +x /usr/local/bin/snow
 
 # Clone Katana Repository
-RUN git clone --recursive https://github.com/JohnHammond/katana.git /katana
+RUN git clone --recursive https://github.com/IgorDuino/nagamaki-ctf /katana
 # Install katana python dependencies
 WORKDIR /katana
 # Unfortunately, since we clone this I can't make a change directly and had to path with SED. 
